@@ -13,22 +13,36 @@ st.set_page_config(page_title="Alberta LSD Mobile", layout="centered")
 st.title("📍 Alberta LSD Map")
 st.caption("Developed by Ardalan Fezzi")
 
+
 @st.cache_resource
 def load_data_from_drive():
     # Your Google Drive File ID
     file_id = '1YdMDllcconMl6Bzk835gfiAIRTefJD1T'
-    url = f'https://drive.google.com/uc?id={file_id}'
-    
-    # Download the file into memory
-    response = requests.get(url)
+
+    # This specific URL format bypasses the "Large File Virus Scan" warning
+    session = requests.Session()
+    download_url = "https://docs.google.com/uc?export=download"
+    response = session.get(download_url, params={'id': file_id}, stream=True)
+
+    # Look for a confirmation token in the cookies if Google asks "Are you sure?"
+    token = None
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            token = value
+            break
+
+    if token:
+        params = {'id': file_id, 'confirm': token}
+        response = session.get(download_url, params=params, stream=True)
+
     if response.status_code == 200:
         # Load the Parquet data directly from the download stream
         gdf = gpd.read_parquet(io.BytesIO(response.content))
-        if gdf.crs is None: 
+        if gdf.crs is None:
             gdf.set_crs(epsg=4269, inplace=True)
         return gdf
     else:
-        st.error("Could not connect to Google Drive. Check permissions.")
+        st.error(f"Could not connect to Google Drive. Status: {response.status_code}")
         return None
 
 if 'gdf' not in st.session_state:
