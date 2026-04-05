@@ -2,3 +2,4 @@ streamlit
 geopandas
 pyarrow
 streamlit-folium
+requests
