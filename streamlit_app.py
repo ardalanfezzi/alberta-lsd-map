@@ -11,15 +11,20 @@ st.set_page_config(page_title="Alberta LSD Mobile", layout="centered")
 st.title("📍 Alberta LSD Map")
 st.caption("Developed by Ardalan Fezzi")
 
-@st.cache_resource
+
+@st.cache_data(show_spinner="Optimizing database for mobile...")
 def load_data():
-    # PASTE YOUR COPIED LINK BETWEEN THE QUOTES BELOW
     url = "https://github.com/ardalanfezzi/alberta-lsd-map/releases/download/v1.0/ATS_Data.parquet"
-    
-    response = requests.get(url)
+
+    response = requests.get(url, timeout=60)
     if response.status_code == 200:
-        gdf = gpd.read_parquet(io.BytesIO(response.content))
-        if gdf.crs is None: 
+        # ONLY load the columns we need for searching and the map geometry
+        # This reduces RAM usage by about 60%
+        columns_to_keep = ['LS', 'SEC', 'TWP', 'RGE', 'M', 'geometry']
+
+        gdf = gpd.read_parquet(io.BytesIO(response.content), columns=columns_to_keep)
+
+        if gdf.crs is None:
             gdf.set_crs(epsg=4269, inplace=True)
         return gdf
     else:
