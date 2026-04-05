@@ -12,23 +12,25 @@ st.title("📍 Alberta LSD Map")
 st.caption("Developed by Ardalan Fezzi")
 
 
-@st.cache_data(show_spinner="Optimizing database for mobile...")
+@st.cache_data(show_spinner="Streaming and optimizing Alberta survey grid...")
 def load_data():
     url = "https://github.com/ardalanfezzi/alberta-lsd-map/releases/download/v1.0/ATS_Data.parquet"
 
-    response = requests.get(url, timeout=60)
-    if response.status_code == 200:
-        # ONLY load the columns we need for searching and the map geometry
-        # This reduces RAM usage by about 60%
-        columns_to_keep = ['LS', 'SEC', 'TWP', 'RGE', 'M', 'geometry']
+    try:
+        # Use a stream to avoid loading the whole 218MB into RAM at once
+        with requests.get(url, stream=True, timeout=120) as r:
+            r.raise_for_status()
+            # Wrap the stream in a BytesIO object for geopandas
+            with io.BytesIO(r.content) as buf:
+                # ONLY load essential columns to stay under the 1GB RAM limit
+                cols = ['LS', 'SEC', 'TWP', 'RGE', 'M', 'geometry']
+                gdf = gpd.read_parquet(buf, columns=cols)
 
-        gdf = gpd.read_parquet(io.BytesIO(response.content), columns=columns_to_keep)
-
-        if gdf.crs is None:
-            gdf.set_crs(epsg=4269, inplace=True)
-        return gdf
-    else:
-        st.error(f"Failed to download. Status code: {response.status_code}")
+                if gdf.crs is None:
+                    gdf.set_crs(epsg=4269, inplace=True)
+                return gdf
+    except Exception as e:
+        st.error(f"Error loading database: {e}")
         return None
 
 if 'gdf' not in st.session_state:
