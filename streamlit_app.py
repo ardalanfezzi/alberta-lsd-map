@@ -14,7 +14,7 @@ st.caption("Developed by Ardalan Fezzi")
 @st.cache_resource
 def load_data():
     # PASTE YOUR COPIED LINK BETWEEN THE QUOTES BELOW
-    url = "PASTE_LINK_HERE"
+    url = "https://github.com/ardalanfezzi/alberta-lsd-map/releases/download/v1.0/ATS_Data.parquet"
     
     response = requests.get(url)
     if response.status_code == 200:
